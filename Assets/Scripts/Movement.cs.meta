@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 9c0f2e6962967a6759c3a0d98ffe8705
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - FrontLeftWheel: {instanceID: 0}
+  - FrontRightWheel: {instanceID: 0}
+  - RearLeftWheel: {instanceID: 0}
+  - RearRightWheel: {instanceID: 0}
+  - com: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
