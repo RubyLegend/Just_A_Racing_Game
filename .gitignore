@@ -1,10 +1,14 @@
+# Simple .gitignore for Unreal Engine
+#
+# Cloned from Unreal Engine project's .gitignore
+
 Binaries
 DerivedDataCache
 Intermediate
 Saved
 .vscode
 .vs
-*.VC.db
+*.vc.db
 *.opensdf
 *.opendb
 *.sdf
