@@ -19,6 +19,14 @@
 				"Mac",
 				"Linux"
 			]
+		},
+		{
+			"Name": "ChaosVehiclesPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "Metasound",
+			"Enabled": true
 		}
 	]
 }
