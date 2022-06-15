@@ -39,4 +39,12 @@ public:
 	UFUNCTION()
 		void InputAxis_Steering(float v);
 
+	UFUNCTION()
+		void InputAction_Handbrake_Enable();
+
+	UFUNCTION()
+		void InputAction_Handbrake_Disable();
+	
+	UFUNCTION()
+		void ChangeBackLights(bool Enabled);
 };

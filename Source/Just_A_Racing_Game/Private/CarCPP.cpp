@@ -31,9 +31,11 @@ void ACarCPP::Tick(float DeltaTime)
 void ACarCPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-	auto s = PlayerInputComponent->BindAxis(TEXT("Gas"), this, &ACarCPP::InputAxis_Gas);
+	PlayerInputComponent->BindAxis(TEXT("Gas"), this, &ACarCPP::InputAxis_Gas);
 	PlayerInputComponent->BindAxis(TEXT("Reverse Gas"), this, &ACarCPP::InputAxis_ReverseGas);
 	PlayerInputComponent->BindAxis(TEXT("Steering"), this, &ACarCPP::InputAxis_Steering);
+	PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Pressed, this, &ACarCPP::InputAction_Handbrake_Enable);
+	PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Released, this, &ACarCPP::InputAction_Handbrake_Disable);
 }
 
 void ACarCPP::InputAxis_Gas(float v)
@@ -51,3 +53,40 @@ void ACarCPP::InputAxis_Steering(float v)
 	GetVehicleMovement()->SetSteeringInput(v);
 }
 
+void ACarCPP::InputAction_Handbrake_Enable()
+{
+	GetVehicleMovement()->SetHandbrakeInput(true);
+	//ChangeBackLights(true);
+}
+
+void ACarCPP::InputAction_Handbrake_Disable()
+{
+	GetVehicleMovement()->SetHandbrakeInput(false);
+	//ChangeBackLights(false);
+}
+
+void ACarCPP::ChangeBackLights(bool Enabled)
+{
+	// Review crash around loading new material to slot
+	if(Enabled == true) {
+		static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("Material'/Game/ARCADE_FREE_Racing_Car/TestImport/BackLights_on.BackLights_on'"));
+		UMaterial* TheMaterial;
+		if(Material.Object != NULL)
+		{
+		    TheMaterial = (UMaterial*)Material.Object;
+			UMaterialInstanceDynamic* BackLights = UMaterialInstanceDynamic::Create(TheMaterial, this);
+			GetMesh()->SetMaterial(1, BackLights);
+		}
+	}
+	else {
+		static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("Material'/Game/ARCADE_FREE_Racing_Car/TestImport/BackLights_off.BackLights_off'"));
+		UMaterial* TheMaterial;
+		if(Material.Object != NULL)
+		{
+		    TheMaterial = (UMaterial*)Material.Object;
+			UMaterialInstanceDynamic* BackLights = UMaterialInstanceDynamic::Create(TheMaterial, this);
+			GetMesh()->SetMaterial(1, BackLights);
+		}
+	}
+
+}
