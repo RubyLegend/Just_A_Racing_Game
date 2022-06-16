@@ -8,6 +8,9 @@
 #include <ChaosVehicleMovementComponent.h>
 #include "Components/SpotLightComponent.h"
 #include "PhysicsEngine/PhysicsThrusterComponent.h"
+#include "Components/AudioComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "MySaveGame.h"
 #include "Engine/GameEngine.h"
 #include "CarCPP.generated.h"
 
@@ -19,11 +22,14 @@ class JUST_A_RACING_GAME_API ACarCPP : public AWheeledVehiclePawn
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UMaterialInterface *BackLightsOn = nullptr;
 	
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UMaterialInterface *BackLightsOff = nullptr;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UMaterialInterface *CarColor = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	USpotLightComponent *RLLight = nullptr;
@@ -33,6 +39,12 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UPhysicsThrusterComponent *Thruster = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UAudioComponent *CarSound = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UMySaveGame* LoadedGame = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	float LastGas = 0;
@@ -52,6 +64,15 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	FTransform LastPos;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	float Sp;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	float Rost = 100;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	float Spad = 50;
+
 	// Sets default values for this pawn's properties
 	ACarCPP();
 
@@ -68,9 +89,6 @@ public:
 
 	UFUNCTION()
 		void InputAxisGas(float v);
-
-	UFUNCTION()
-		void InputAxisReverseGas(float v);
 
 	UFUNCTION()
 		void InputAxisSteering(float v);
@@ -101,4 +119,13 @@ public:
 
 	UFUNCTION()
 		void CalculateThrusterForce();
+	
+	UFUNCTION()
+		void SetupCarSound();
+	
+	UFUNCTION()
+		void LoadSave();
+	
+	UFUNCTION()
+		void SetCarColor();
 };

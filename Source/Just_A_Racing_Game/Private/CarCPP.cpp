@@ -3,6 +3,10 @@
 
 #include "CarCPP.h"
 
+#define DEBUGMESSAGE(x, ...) if(GEngine){ \
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Red, FString::Printf(TEXT(x), __VA_ARGS__));\
+}
+
 // Sets default values
 ACarCPP::ACarCPP()
 {
@@ -17,12 +21,17 @@ ACarCPP::ACarCPP()
 
 	Thruster = CreateDefaultSubobject<UPhysicsThrusterComponent>(TEXT("Nitro Thrust"));
 
+	CarSound = CreateDefaultSubobject<UAudioComponent>(TEXT("Engine"));
+
+	CarColor = ConstructorHelpers::FObjectFinder<UMaterialInterface>(TEXT("Material'/Game/ARCADE_FREE_Racing_Car/TestImport/Material_001.Material_001'")).Object;
 }
 
 // Called when the game starts or when spawned
 void ACarCPP::BeginPlay()
 {
 	Super::BeginPlay();
+	LoadSave();
+	SetCarColor();
 }
 
 // Called every frame
@@ -32,6 +41,7 @@ void ACarCPP::Tick(float DeltaTime)
 	AddCameraMovementDelta(DeltaTime);
 	AddThrustLevel(DeltaTime);
 	CalculateThrusterForce();
+	SetupCarSound();
 }
 
 // Called to bind functionality to input
@@ -39,7 +49,6 @@ void ACarCPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 	PlayerInputComponent->BindAxis(TEXT("Gas"), this, &ACarCPP::InputAxisGas);
-	PlayerInputComponent->BindAxis(TEXT("Reverse Gas"), this, &ACarCPP::InputAxisReverseGas);
 	PlayerInputComponent->BindAxis(TEXT("Steering"), this, &ACarCPP::InputAxisSteering);
 	PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Pressed, this, &ACarCPP::InputActionHandbrakeEnable);
 	PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Released, this, &ACarCPP::InputActionHandbrakeDisable);
@@ -50,14 +59,17 @@ void ACarCPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 
 void ACarCPP::InputAxisGas(float v)
 {
-	GetVehicleMovement()->SetThrottleInput(v);
-	LastGas = v;
-}
-
-void ACarCPP::InputAxisReverseGas(float v)
-{
-	GetVehicleMovement()->SetBrakeInput(v);
-	LastGas = v;
+	if(v >= 0)
+	{
+		GetVehicleMovement()->SetThrottleInput(v);
+		GetVehicleMovement()->SetBrakeInput(0);
+	}
+	else
+	{
+		GetVehicleMovement()->SetThrottleInput(0);
+		GetVehicleMovement()->SetBrakeInput(-v);
+	}
+	LastGas = abs(v);
 }
 
 void ACarCPP::InputAxisSteering(float v)
@@ -153,4 +165,49 @@ void ACarCPP::CalculateThrusterForce()
 
 	Thruster->ThrustStrength = ThrustForce;
 
+}
+
+void ACarCPP::SetupCarSound()
+{
+	//---------Calculations-----------//
+	float ForwardSpeed = abs(GetVehicleMovement()->GetForwardSpeed());
+	float ForwardSpeedCorrected;
+	if(ForwardSpeed > 100)
+		ForwardSpeedCorrected = 100;
+	else
+		ForwardSpeedCorrected = ForwardSpeed;
+	
+	float a;
+	if(Sp > ForwardSpeedCorrected + Spad)
+		a = Sp - Spad;
+	else
+		a = ForwardSpeedCorrected;
+
+	float b;
+	if(ForwardSpeed - Sp > Rost)
+		b = Sp + Rost;
+	else
+		b = ForwardSpeed;
+
+	if(LastGas > 0)
+		Sp = b;
+	else
+		Sp = a;
+	//-------------------------//
+
+	CarSound->ResetParameters();
+
+	CarSound->SetFloatParameter(TEXT("RPM"), Sp);
+}
+
+void ACarCPP::LoadSave()
+{
+	LoadedGame = Cast<UMySaveGame>(UGameplayStatics::LoadGameFromSlot(TEXT("Save"), 0));
+}
+
+void ACarCPP::SetCarColor()
+{
+	UMaterialInstanceDynamic *Mat = UMaterialInstanceDynamic::Create(CarColor, GetMesh());
+	Mat->SetScalarParameterValue(TEXT("Light Color"), LoadedGame->CarColor);
+	GetMesh()->SetMaterial(0, Mat);	
 }
