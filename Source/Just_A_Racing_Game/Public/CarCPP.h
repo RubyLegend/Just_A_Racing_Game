@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "WheeledVehiclePawn.h"
 #include "GameFramework/Pawn.h"
-#include <ChaosVehicleMovementComponent.h>
+#include "ChaosVehicleMovementComponent.h"
 #include "Components/SpotLightComponent.h"
 #include "PhysicsEngine/PhysicsThrusterComponent.h"
 #include "Components/AudioComponent.h"
