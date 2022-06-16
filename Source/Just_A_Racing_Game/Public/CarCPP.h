@@ -6,6 +6,9 @@
 #include "WheeledVehiclePawn.h"
 #include "GameFramework/Pawn.h"
 #include <ChaosVehicleMovementComponent.h>
+#include "Components/SpotLightComponent.h"
+#include "PhysicsEngine/PhysicsThrusterComponent.h"
+#include "Engine/GameEngine.h"
 #include "CarCPP.generated.h"
 
 /**
@@ -16,6 +19,27 @@ class JUST_A_RACING_GAME_API ACarCPP : public AWheeledVehiclePawn
 {
 	GENERATED_BODY()
 public:
+	UPROPERTY()
+	UMaterialInterface *BackLightsOn = nullptr;
+	
+	UPROPERTY()
+	UMaterialInterface *BackLightsOff = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	USpotLightComponent *RLLight = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	USpotLightComponent *RRLight = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPhysicsThrusterComponent *Thruster = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	float LastGas = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	bool IsThrusted = false;
+
 	// Sets default values for this pawn's properties
 	ACarCPP();
 
@@ -31,19 +55,25 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	UFUNCTION()
-		void InputAxis_Gas(float v);
+		void InputAxisGas(float v);
 
 	UFUNCTION()
-		void InputAxis_ReverseGas(float v);
+		void InputAxisReverseGas(float v);
 
 	UFUNCTION()
-		void InputAxis_Steering(float v);
+		void InputAxisSteering(float v);
 
 	UFUNCTION()
-		void InputAction_Handbrake_Enable();
+		void InputActionHandbrakeEnable();
 
 	UFUNCTION()
-		void InputAction_Handbrake_Disable();
+		void InputActionHandbrakeDisable();
+
+	UFUNCTION()
+		void InputActionNitroEnable();
+
+	UFUNCTION()
+		void InputActionNitroDisable();
 	
 	UFUNCTION()
 		void ChangeBackLights(bool Enabled);
