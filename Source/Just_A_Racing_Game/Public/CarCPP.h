@@ -40,6 +40,18 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	bool IsThrusted = false;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	float CameraMovementDelta = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	float ThrustLevel = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	float ThrustForce = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	FTransform LastPos;
+
 	// Sets default values for this pawn's properties
 	ACarCPP();
 
@@ -77,4 +89,16 @@ public:
 	
 	UFUNCTION()
 		void ChangeBackLights(bool Enabled);
+	
+	UFUNCTION()
+		void AddCameraMovementDelta(float DeltaTime);
+
+	UFUNCTION()
+		void AddThrustLevel(float DeltaTime);
+
+	UFUNCTION()
+		void InputActionRespawn();
+
+	UFUNCTION()
+		void CalculateThrusterForce();
 };

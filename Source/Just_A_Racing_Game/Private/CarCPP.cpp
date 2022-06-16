@@ -16,7 +16,6 @@ ACarCPP::ACarCPP()
 	RRLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("RR Light"));
 
 	Thruster = CreateDefaultSubobject<UPhysicsThrusterComponent>(TEXT("Nitro Thrust"));
-	//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT("Default Subobject created -> %p"), &Thruster));
 
 }
 
@@ -28,10 +27,11 @@ void ACarCPP::BeginPlay()
 
 // Called every frame
 void ACarCPP::Tick(float DeltaTime)
-{
-	
+{	
 	Super::Tick(DeltaTime);
-
+	AddCameraMovementDelta(DeltaTime);
+	AddThrustLevel(DeltaTime);
+	CalculateThrusterForce();
 }
 
 // Called to bind functionality to input
@@ -45,6 +45,7 @@ void ACarCPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	PlayerInputComponent->BindAction(TEXT("Handbrake"), IE_Released, this, &ACarCPP::InputActionHandbrakeDisable);
 	PlayerInputComponent->BindAction(TEXT("Nitro"), IE_Pressed, this, &ACarCPP::InputActionNitroEnable);
 	PlayerInputComponent->BindAction(TEXT("Nitro"), IE_Released, this, &ACarCPP::InputActionNitroDisable);
+	PlayerInputComponent->BindAction(TEXT("Respawn"), IE_Pressed, this, &ACarCPP::InputActionRespawn);
 }
 
 void ACarCPP::InputAxisGas(float v)
@@ -66,25 +67,19 @@ void ACarCPP::InputAxisSteering(float v)
 
 void ACarCPP::InputActionHandbrakeEnable()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, TEXT("Handbrake Enabled"));
 	GetVehicleMovement()->SetHandbrakeInput(true);
 	ChangeBackLights(true);
 }
 
 void ACarCPP::InputActionHandbrakeDisable()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, TEXT("Handbrake Disabled"));
 	GetVehicleMovement()->SetHandbrakeInput(false);
 	ChangeBackLights(false);
 }
 
 void ACarCPP::InputActionNitroEnable()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, TEXT("Nitro Enabled"));
-	if(Thruster)
-		Thruster->Activate();
-	else
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT("Nitro Address -> %p"), &Thruster));
+	Thruster->Activate();
 
 	ChangeBackLights(true);
 	IsThrusted = true;
@@ -92,11 +87,7 @@ void ACarCPP::InputActionNitroEnable()
 
 void ACarCPP::InputActionNitroDisable()
 {
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, TEXT("Nitro Disabled"));
-	if(Thruster)
-		Thruster->Deactivate();
-	else
-		GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::White, FString::Printf(TEXT("Nitro Address -> %p"), &Thruster));
+	Thruster->Deactivate();
 
 	ChangeBackLights(false);
 	IsThrusted = false;
@@ -114,4 +105,52 @@ void ACarCPP::ChangeBackLights(bool Enabled)
 		RLLight->SetVisibility(false);
 		RRLight->SetVisibility(false);
 	}
+}
+
+void ACarCPP::AddCameraMovementDelta(float DeltaTime)
+{
+	CameraMovementDelta += DeltaTime;
+}
+
+void ACarCPP::AddThrustLevel(float DeltaTime)
+{
+	if(!IsThrusted)
+	{
+		ThrustLevel += DeltaTime/60.0f;
+		if(ThrustLevel >= 1)
+		{
+			ThrustLevel = 1;
+		}
+	}
+	else
+	{
+		ThrustLevel -= DeltaTime/7.0f;
+		if(ThrustLevel <= 0)
+		{
+			ThrustLevel = 0;
+		}
+	}
+}
+
+void ACarCPP::InputActionRespawn()
+{
+	SetActorTransform(LastPos, false, (FHitResult *)nullptr, ETeleportType::TeleportPhysics);
+	GetMesh()->SetPhysicsAngularVelocityInDegrees(FVector(0,0,0));
+	GetMesh()->SetPhysicsLinearVelocity(FVector(0,0,0));
+}
+
+void ACarCPP::CalculateThrusterForce()
+{
+	double a = GetVehicleMovement()->GetForwardSpeed()/27.778;
+	if(a > 110 || ThrustLevel <= 0)
+	{
+		ThrustForce = 0;
+	}
+	else
+	{
+		ThrustForce = 2000000;
+	}
+
+	Thruster->ThrustStrength = ThrustForce;
+
 }
