@@ -64,12 +64,6 @@ public:
 		UMaterialInterface* CarColor = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-		USpotLightComponent* RLLight = nullptr;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
-		USpotLightComponent* RRLight = nullptr;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		UAudioComponent* CarSound = nullptr;
 
 protected:

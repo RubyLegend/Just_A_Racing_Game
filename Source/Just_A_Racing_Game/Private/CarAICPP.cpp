@@ -12,9 +12,6 @@ ACarAICPP::ACarAICPP()
 	BackLightsOn = ConstructorHelpers::FObjectFinder<UMaterialInterface>(TEXT("Material'/Game/ARCADE_FREE_Racing_Car/TestImport/BackLights_on.BackLights_on'")).Object;
 	BackLightsOff = ConstructorHelpers::FObjectFinder<UMaterialInterface>(TEXT("Material'/Game/ARCADE_FREE_Racing_Car/TestImport/BackLights_off.BackLights_off'")).Object;
 
-	RLLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("RL Light"));
-	RRLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("RR Light"));
-
 
 	//CarSound = CreateDefaultSubobject<UAudioComponent>(TEXT("Engine"));
 
