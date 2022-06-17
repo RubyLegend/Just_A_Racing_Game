@@ -89,4 +89,7 @@ public:
 	
 	UFUNCTION()
 		void SetupCarSound();
+
+	UFUNCTION()
+		void LoadSpline();
 };

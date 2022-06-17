@@ -29,15 +29,22 @@ void ACarAICPP::BeginPlay()
 
 	CarSound = FindComponentByClass<UAudioComponent>();
 
+	LoadSpline();
+
+	UMaterialInstanceDynamic* Mat = UMaterialInstanceDynamic::Create(CarColor, GetMesh());
+	Mat->SetScalarParameterValue(TEXT("Light Color"), FMath::RandRange(0.f, 1.f));
+	GetMesh()->SetMaterial(0, Mat);
+}
+
+void ACarAICPP::LoadSpline()
+{
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 		if (It->GetName().Contains(TEXT("BP_Spline_V"))) {
 			Spline = It->FindComponentByClass<USplineComponent>();
 			break;
 		}
-	UMaterialInstanceDynamic* Mat = UMaterialInstanceDynamic::Create(CarColor, GetMesh());
-	Mat->SetScalarParameterValue(TEXT("Light Color"), FMath::RandRange(0.f, 1.f));
-	GetMesh()->SetMaterial(0, Mat);
 }
+
 
 
 // Called every frame
@@ -58,14 +65,14 @@ void ACarAICPP::Tick(float DeltaTime)
 	FVector LocationOnSplineNearlyPlayer;
 	FVector RightVectorOnSplineNearlyPlayer;
 	
-	try {
-		SplineTangentNearlyPlayer = Spline->FindTangentClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
-		LocationOnSplineNearlyPlayer = Spline->FindLocationClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
-		RightVectorOnSplineNearlyPlayer = Spline->FindRightVectorClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+	if(Spline == nullptr) //FIXME
+	{
+		LoadSpline();
 	}
-	catch (...) {
-		return;
-	}
+
+	SplineTangentNearlyPlayer = Spline->FindTangentClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+	LocationOnSplineNearlyPlayer = Spline->FindLocationClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+	RightVectorOnSplineNearlyPlayer = Spline->FindRightVectorClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
 
 	auto NormalizeSplineTangentNearlyPlayer = SplineTangentNearlyPlayer;
 	NormalizeSplineTangentNearlyPlayer.Normalize();
