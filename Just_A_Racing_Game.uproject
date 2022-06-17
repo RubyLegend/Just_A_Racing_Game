@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "5.0",
+	"EngineAssociation": "{60CD4369-626E-461E-9DDC-032EDB9C13B9}",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -10,7 +10,8 @@
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
 				"ChaosVehicles",
-				"Engine"
+				"Engine",
+				"UMG"
 			]
 		}
 	],

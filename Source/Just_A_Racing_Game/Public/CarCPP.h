@@ -5,11 +5,18 @@
 #include "CoreMinimal.h"
 #include "WheeledVehiclePawn.h"
 #include "GameFramework/Pawn.h"
+#include "GameFramework/Actor.h"
+#include "GameFramework/PlayerController.h"
+#include "EngineUtils.h"
 #include "ChaosVehicleMovementComponent.h"
 #include "Components/SpotLightComponent.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "Components/SplineComponent.h"
 #include "PhysicsEngine/PhysicsThrusterComponent.h"
 #include "Components/AudioComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Blueprint/UserWidget.h"
 #include "MySaveGame.h"
 #include "Engine/GameEngine.h"
 #include "CarCPP.generated.h"
@@ -45,6 +52,12 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 	UMySaveGame* LoadedGame = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	USplineComponent *RoadSpline = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	USpringArmComponent *ArmCPP = nullptr;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	float LastGas = 0;
@@ -128,4 +141,13 @@ public:
 	
 	UFUNCTION()
 		void SetCarColor();
+	
+	UFUNCTION()
+		void LoadSpline();
+
+	UFUNCTION()
+		void GetRespawnPos();
+	
+	UFUNCTION()
+		void CameraMovement();
 };

@@ -24,6 +24,8 @@ ACarCPP::ACarCPP()
 	CarSound = CreateDefaultSubobject<UAudioComponent>(TEXT("Engine"));
 
 	CarColor = ConstructorHelpers::FObjectFinder<UMaterialInterface>(TEXT("Material'/Game/ARCADE_FREE_Racing_Car/TestImport/Material_001.Material_001'")).Object;
+
+	ArmCPP = CreateDefaultSubobject<USpringArmComponent>(TEXT("Arm"));
 }
 
 // Called when the game starts or when spawned
@@ -32,6 +34,7 @@ void ACarCPP::BeginPlay()
 	Super::BeginPlay();
 	LoadSave();
 	SetCarColor();
+	LoadSpline();
 }
 
 // Called every frame
@@ -42,6 +45,8 @@ void ACarCPP::Tick(float DeltaTime)
 	AddThrustLevel(DeltaTime);
 	CalculateThrusterForce();
 	SetupCarSound();
+	GetRespawnPos();
+	CameraMovement();
 }
 
 // Called to bind functionality to input
@@ -202,6 +207,7 @@ void ACarCPP::SetupCarSound()
 
 void ACarCPP::LoadSave()
 {
+	// Review, if SaveGame is actually creating
 	LoadedGame = Cast<UMySaveGame>(UGameplayStatics::LoadGameFromSlot(TEXT("Save"), 0));
 }
 
@@ -210,4 +216,59 @@ void ACarCPP::SetCarColor()
 	UMaterialInstanceDynamic *Mat = UMaterialInstanceDynamic::Create(CarColor, GetMesh());
 	Mat->SetScalarParameterValue(TEXT("Light Color"), LoadedGame->CarColor);
 	GetMesh()->SetMaterial(0, Mat);	
+}
+
+void ACarCPP::LoadSpline()
+{
+	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+		if (It->GetName().Contains(TEXT("BP_Spline_V"))) {
+			RoadSpline = It->FindComponentByClass<USplineComponent>();
+			break;
+		}
+}
+
+void ACarCPP::GetRespawnPos()
+{
+	FVector ActorLocation = GetActorLocation();
+	if(RoadSpline == nullptr) //FIXME
+	{
+		LoadSpline();
+	}
+	FVector ClosestPointOnSpline = RoadSpline->FindLocationClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::World);
+	float CarZRotation = RoadSpline->FindTangentClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::World).Rotation().Yaw;
+	float DistanceBetweenPlayerAndSpline = (ActorLocation - ClosestPointOnSpline).Length();
+
+	if(DistanceBetweenPlayerAndSpline < 2200 )
+	{
+		LastPos = FTransform(FRotator(0,CarZRotation, 0), ClosestPointOnSpline+FVector(0,0,50), FVector(1,1,1));
+	}
+
+}
+
+void ACarCPP::CameraMovement()
+{
+	float x, y;
+	UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetInputMouseDelta(x, y);
+	if(abs(x) <= 0.1 && abs(y) <= 0.1)
+	{
+		if(CameraMovementDelta >= 2.5)
+		{
+			
+			FRotator A = ArmCPP->GetOwner()->GetActorRotation();
+			FRotator B = GetMesh()->GetOwner()->GetActorRotation();
+
+			FRotator Rot = UKismetMathLibrary::REase(A, B, 0, true, EEasingFunc::Type::Linear);
+			Rot = Rot - FRotator(20,0,0);
+			
+			ArmCPP->SetRelativeRotation(Rot);
+
+			CameraMovementDelta = 2.5;
+		}
+	}
+	else
+	{
+		FRotator rotation(y,x,0);
+		ArmCPP->AddRelativeRotation(rotation);
+		CameraMovementDelta = 0;
+	}
 }
