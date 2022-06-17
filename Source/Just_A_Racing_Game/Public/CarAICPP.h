@@ -9,6 +9,13 @@
 #include "Components/SplineComponent.h"
 #include "ChaosVehicleMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "GameFramework/Pawn.h"
+#include "PhysicsEngine/PhysicsThrusterComponent.h"
+#include "Components/SpotLightComponent.h"
+#include "Components/AudioComponent.h"
+#include "Kismet/GameplayStatics.h"
+#include "MySaveGame.h"
+#include "Engine/GameEngine.h"
 #include "CarAICPP.generated.h"
 
 
@@ -23,14 +30,47 @@ public:
 	// Sets default values for this pawn's properties
 	ACarAICPP();
 	
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	USplineComponent *Spline=nullptr;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	float OverturmClock = 0;
 
-	UPROPERTY()
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	FTransform LastPos;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+		float Sp = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+		float Rost = 100;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+		float Spad = 50;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+		float RandomSterling = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+		float RandomSterlingTimer = 0;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		UMaterialInterface* BackLightsOn = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		UMaterialInterface* BackLightsOff = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		UMaterialInterface* CarColor = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		USpotLightComponent* RLLight = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		USpotLightComponent* RRLight = nullptr;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		UAudioComponent* CarSound = nullptr;
 
 protected:
 	// Called when the game starts or when spawned
@@ -46,4 +86,7 @@ public:
 
 	UFUNCTION()
 		void RespawnUpdate(FVector Pos, FRotator ActorRotation, float RotationOnZ, float Length, float DeltaTime);
+	
+	UFUNCTION()
+		void SetupCarSound();
 };

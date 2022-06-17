@@ -9,6 +9,17 @@ ACarAICPP::ACarAICPP()
 	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	BackLightsOn = ConstructorHelpers::FObjectFinder<UMaterialInterface>(TEXT("Material'/Game/ARCADE_FREE_Racing_Car/TestImport/BackLights_on.BackLights_on'")).Object;
+	BackLightsOff = ConstructorHelpers::FObjectFinder<UMaterialInterface>(TEXT("Material'/Game/ARCADE_FREE_Racing_Car/TestImport/BackLights_off.BackLights_off'")).Object;
+
+	RLLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("RL Light"));
+	RRLight = CreateDefaultSubobject<USpotLightComponent>(TEXT("RR Light"));
+
+
+	//CarSound = CreateDefaultSubobject<UAudioComponent>(TEXT("Engine"));
+
+	CarColor = ConstructorHelpers::FObjectFinder<UMaterialInterface>(TEXT("Material'/Game/ARCADE_FREE_Racing_Car/TestImport/Material_001.Material_001'")).Object;
+
 }
 
 // Called when the game starts or when spawned
@@ -16,11 +27,16 @@ void ACarAICPP::BeginPlay()
 {
 	Super::BeginPlay();
 
+	CarSound = FindComponentByClass<UAudioComponent>();
+
 	for (TActorIterator<AActor> It(GetWorld()); It; ++It)
 		if (It->GetName().Contains(TEXT("BP_Spline_V"))) {
 			Spline = It->FindComponentByClass<USplineComponent>();
 			break;
 		}
+	UMaterialInstanceDynamic* Mat = UMaterialInstanceDynamic::Create(CarColor, GetMesh());
+	Mat->SetScalarParameterValue(TEXT("Light Color"), FMath::RandRange(0.f, 1.f));
+	GetMesh()->SetMaterial(0, Mat);
 }
 
 
@@ -28,12 +44,28 @@ void ACarAICPP::BeginPlay()
 void ACarAICPP::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	RandomSterlingTimer += DeltaTime;
+
+	if (RandomSterlingTimer > 10)
+		RandomSterlingTimer = 0, RandomSterling = FMath::RandRange(-0.05,0.05);
+
+	SetupCarSound();
 	auto ActorLocation = GetActorLocation();
 	auto ActorRotator = GetActorRotation();
 
-	auto SplineTangentNearlyPlayer = Spline->FindTangentClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
-	auto LocationOnSplineNearlyPlayer = Spline->FindLocationClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
-	auto RightVectorOnSplineNearlyPlayer = Spline->FindRightVectorClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+	FVector SplineTangentNearlyPlayer;
+	FVector LocationOnSplineNearlyPlayer;
+	FVector RightVectorOnSplineNearlyPlayer;
+	
+	try {
+		SplineTangentNearlyPlayer = Spline->FindTangentClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+		LocationOnSplineNearlyPlayer = Spline->FindLocationClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+		RightVectorOnSplineNearlyPlayer = Spline->FindRightVectorClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+	}
+	catch (...) {
+		return;
+	}
 
 	auto NormalizeSplineTangentNearlyPlayer = SplineTangentNearlyPlayer;
 	NormalizeSplineTangentNearlyPlayer.Normalize();
@@ -62,7 +94,7 @@ void ACarAICPP::Tick(float DeltaTime)
 
 	auto DirectionAngle = UKismetMathLibrary::NormalizedDeltaRotator(FoundDirectionForActor, ActorRotator).Yaw;
 
-	auto WheelStering = UKismetMathLibrary::MapRangeClamped(DirectionAngle, -30, 30, -1, 1);
+	auto WheelStering = UKismetMathLibrary::MapRangeClamped(DirectionAngle, -30, 30, -1, 1) + RandomSterling;
 
 
 	RespawnUpdate(LocationOnSplineNearlyPlayer + FVector(0, 0, 50.), ActorRotator, 
@@ -131,5 +163,44 @@ void ACarAICPP::RespawnUpdate(FVector Pos, FRotator ActorRotation, float Rotatio
 		GetMesh()->SetPhysicsAngularVelocityInDegrees(FVector(0, 0, 0));
 		GetMesh()->SetPhysicsLinearVelocity(FVector(0, 0, 0));
 	}
+
+}
+
+void ACarAICPP::SetupCarSound()
+{
+	//---------Calculations-----------//
+	float ForwardSpeed = abs(GetVehicleMovement()->GetForwardSpeed());
+	float ForwardSpeedCorrected;
+	if (ForwardSpeed > 100)
+		ForwardSpeedCorrected = 100;
+	else
+		ForwardSpeedCorrected = ForwardSpeed;
+
+	float a;
+	if (Sp > ForwardSpeedCorrected + Spad)
+		a = Sp - Spad;
+	else
+		a = ForwardSpeedCorrected;
+
+	float b;
+	if (ForwardSpeed - Sp > Rost)
+		b = Sp + Rost;
+	else
+		b = ForwardSpeed;
+
+	if (1 > 0)
+		Sp = b;
+	else
+		Sp = a;
+	//-------------------------//
+	
+	if (CarSound == nullptr) {
+		GEngine->AddOnScreenDebugMessage(-1,15,FColor::White,TEXT("Problem"));
+		return;
+	}
+	CarSound->ResetParameters();
+
+
+	CarSound->SetFloatParameter(TEXT("RPM"), Sp);
 
 }
