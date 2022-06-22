@@ -49,99 +49,63 @@ void ACarAICPP::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	//Update random timer
 	RandomSterlingTimer += DeltaTime;
-
 	if (RandomSterlingTimer > 10)
-		RandomSterlingTimer = 0, RandomSterling = FMath::RandRange(-0.05,0.05);
+		RandomSterlingTimer = 0, RandomSterling = FMath::RandRange(-0.05, 0.05);
 
 	SetupCarSound();
-	auto ActorLocation = GetActorLocation();
-	auto ActorRotator = GetActorRotation();
 
-	FVector SplineTangentNearlyPlayer;
-	FVector LocationOnSplineNearlyPlayer;
-	FVector RightVectorOnSplineNearlyPlayer;
-	
-	if(Spline == nullptr) //FIXME
+	if (Spline == nullptr) //FIXME
 	{
 		LoadSpline();
 	}
 
-	SplineTangentNearlyPlayer = Spline->FindTangentClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
-	LocationOnSplineNearlyPlayer = Spline->FindLocationClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
-	RightVectorOnSplineNearlyPlayer = Spline->FindRightVectorClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+	auto ActorLocation = GetActorLocation();
+	double ActorToSplineNearlyPointLength = 0, ActorToSplineNearlyPointLengthXY = 0;
+	FVector LocationOnSplineNearlyPlayer = GetClosestLocationAndLengths(ActorLocation, ActorToSplineNearlyPointLength, ActorToSplineNearlyPointLengthXY);
+	FVector3d SelectedCarLocation = SelectVirtualCarLocation(ActorLocation, LocationOnSplineNearlyPlayer, ActorToSplineNearlyPointLengthXY);
 
-	auto NormalizeSplineTangentNearlyPlayer = SplineTangentNearlyPlayer;
-	NormalizeSplineTangentNearlyPlayer.Normalize();
+	double RoadRotationOnZ = 0;
+	FVector SplineTangentNearlyPlayer = GetClosestTangentAndZRotation(ActorLocation, RoadRotationOnZ);
 
-	auto ActorToSplineNearlyPointVector = ActorLocation - LocationOnSplineNearlyPlayer;
+	FVector FoundDestinationActorPoint = GetNextLocationOnRoad(SplineTangentNearlyPlayer, SelectedCarLocation);
 
-	auto ActorToSplineNearlyPointVectorXY = ActorToSplineNearlyPointVector;
-	ActorToSplineNearlyPointVectorXY.Z = 0;
-
-	auto ActorToSplineNearlyPointLength = ActorToSplineNearlyPointVector.Length();
-	auto ActorToSplineNearlyPointLengthXY = ActorToSplineNearlyPointVectorXY.Length();
-
-	FVector3d SelectedCarLocation;
-	if (ActorToSplineNearlyPointLengthXY > 500.f) // Safe road width
-		SelectedCarLocation = ActorLocation;
-	else
-		SelectedCarLocation = LocationOnSplineNearlyPlayer;
-
-	auto SplineTangentNearlyPlayerWithCorrectLen = NormalizeSplineTangentNearlyPlayer * 1000.f; //Vector len
-
-	auto TryDestinationActorPoint = SplineTangentNearlyPlayerWithCorrectLen + SelectedCarLocation;
-
-	auto FoundDestinationActorPoint = Spline->FindLocationClosestToWorldLocation(TryDestinationActorPoint, ESplineCoordinateSpace::Type::World);
-
-	auto FoundDirectionForActor = UKismetMathLibrary::FindLookAtRotation(SelectedCarLocation, FoundDestinationActorPoint);
-
-	auto DirectionAngle = UKismetMathLibrary::NormalizedDeltaRotator(FoundDirectionForActor, ActorRotator).Yaw;
-
-	auto WheelStering = UKismetMathLibrary::MapRangeClamped(DirectionAngle, -30, 30, -1, 1) + RandomSterling;
+	auto ActorRotator = GetActorRotation();
+	double DirectionAngle = GetAngleBerweenCarAndRoad(ActorRotator, SelectedCarLocation, FoundDestinationActorPoint);
+	double WheelStering = GetWheelSteering(DirectionAngle);
 
 
-	RespawnUpdate(LocationOnSplineNearlyPlayer + FVector(0, 0, 50.), ActorRotator, 
-		SplineTangentNearlyPlayer.Rotation().Yaw, ActorToSplineNearlyPointLength, DeltaTime);
+	RespawnUpdate(LocationOnSplineNearlyPlayer, ActorRotator, RoadRotationOnZ, ActorToSplineNearlyPointLength, DeltaTime);
 
 	if (GetVehicleMovement()->GetForwardSpeed() >= 10) {
-		GetVehicleMovement()->SetThrottleInput(1);
-		GetVehicleMovement()->SetBrakeInput(0);
-		GetVehicleMovement()->SetSteeringInput(WheelStering * 2.5);
+		ApplyCarAxis(1, 0, WheelStering);
+		ChangeBackLights(0);
 	}
 	else {
-		auto TurningRadius = tan(WheelStering * 30.f) / 400.f;
-		auto FirstVecRadius = ActorRotator.Vector() * -2.;
-		auto SecondVecRadius = (ActorRotator + FRotator(0, 90., 0)).Vector() * TurningRadius;
+		auto TurningRadius = GetTurningRadius(FMath::Sign(WheelStering));
 
-		auto TurningRadiusCenter = ActorLocation + FirstVecRadius + SecondVecRadius + FVector(0, 0, 100);
+		FVector CarVector = GetCarVector(ActorRotator);
+		FVector CarRightVector = GetCarRightVector(ActorRotator);
 
-		auto SplineTangentNearlyRadius = Spline->FindTangentClosestToWorldLocation(TurningRadiusCenter, ESplineCoordinateSpace::Type::World);
+		double LengthToRigthPoint = 0;
 
-		auto SplineToRadiusVec = SplineTangentNearlyRadius - TurningRadiusCenter;
-		SplineToRadiusVec.Z = 0;
+		double AngleAngleBetweenCarAndRightBector = GetAngleBetweenCarAndRightvectorSplineAndLength(ActorLocation, LocationOnSplineNearlyPlayer, ActorRotator, LengthToRigthPoint);
 
-		auto autoSplineToRadiusLength = SplineToRadiusVec.Length();
+		double LenFromTurningRadiusCenterToRoad = GetLenFromTurningRadiusCenterToRoad(CarVector, CarRightVector, ActorLocation, TurningRadius);
 
-		auto RightPointToPlayer = LocationOnSplineNearlyPlayer + RightVectorOnSplineNearlyPlayer - ActorLocation;
-		RightPointToPlayer.Z = 0;
-		bool ActorSide = RightPointToPlayer.Length() > ActorToSplineNearlyPointLengthXY;
+		double LenFromSteeringCircleToRoadWigth = GetLenFromSteeringCircleToRoadWigth(LenFromTurningRadiusCenterToRoad, TurningRadius, 
+			AngleAngleBetweenCarAndRightBector, LengthToRigthPoint, ActorToSplineNearlyPointLengthXY);
 
-		auto RightPointToPlayerRot = UKismetMathLibrary::NormalizedDeltaRotator(RightVectorOnSplineNearlyPlayer.Rotation(), ActorRotator);
-
-		bool ActorDirectionY = abs(RightPointToPlayerRot.Yaw) > 90;
-
-		auto LenToRadiusFromSpline = autoSplineToRadiusLength + TurningRadius * (ActorSide ? -1. : 1) * (ActorDirectionY ? -1. : 1);
-
-		if (LenToRadiusFromSpline > 750. && abs(WheelStering) > 15.) {
-			GetVehicleMovement()->SetThrottleInput(0);
-			GetVehicleMovement()->SetBrakeInput(1);
-			GetVehicleMovement()->SetSteeringInput(-WheelStering * 2.5);
+		bool TheNeedForATurnBack = CheckTheNeedForATurnBack(DirectionAngle, LenFromSteeringCircleToRoadWigth);
+		
+		if (TheNeedForATurnBack) {
+			ApplyCarAxis(0, 1, -WheelStering);
+			ChangeBackLights(1);
 		}
 		else {
-			GetVehicleMovement()->SetThrottleInput(1);
-			GetVehicleMovement()->SetBrakeInput(0);
-			GetVehicleMovement()->SetSteeringInput(WheelStering * 2.5);
+			ApplyCarAxis(1, 0, 2.5*WheelStering);
+			ChangeBackLights(0);
 		}
 	}
 
@@ -153,6 +117,116 @@ void ACarAICPP::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 }
 
+FVector ACarAICPP::GetClosestLocationAndLengths(FVector ActorLocation, double& ActorToSplineNearlyPointLength, double& ActorToSplineNearlyPointLengthXY)
+{
+
+	auto LocationOnSplineNearlyPlayer = Spline->FindLocationClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+
+	auto ActorToSplineNearlyPointVector = ActorLocation - LocationOnSplineNearlyPlayer;
+
+	auto ActorToSplineNearlyPointVectorXY = ActorToSplineNearlyPointVector;
+	ActorToSplineNearlyPointVectorXY.Z = 0;
+
+	ActorToSplineNearlyPointLength = ActorToSplineNearlyPointVector.Length();
+	ActorToSplineNearlyPointLengthXY = ActorToSplineNearlyPointVectorXY.Length();
+	return LocationOnSplineNearlyPlayer;
+}
+
+FVector ACarAICPP::SelectVirtualCarLocation(FVector ActorLocation, FVector LocationOnSplineNearlyPlayer, double ActorToSplineNearlyPointLengthXY)
+{
+	if (ActorToSplineNearlyPointLengthXY > 500.f) // Safe road width
+		return ActorLocation;
+	else
+		return LocationOnSplineNearlyPlayer;
+}
+
+FVector ACarAICPP::GetClosestTangentAndZRotation(FVector ActorLocation, double& ActorRotationOnZ) {
+	auto SplineTangentNearlyPlayer = Spline->FindTangentClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+
+	ActorRotationOnZ = SplineTangentNearlyPlayer.Rotation().Yaw;
+
+	SplineTangentNearlyPlayer.Normalize();
+
+	return SplineTangentNearlyPlayer;
+}
+
+FVector ACarAICPP::GetNextLocationOnRoad(FVector SplineTangentNearlyPlayer, FVector SelectedCarLocation) {
+	auto FirstPoint = SplineTangentNearlyPlayer * 1000.f + SelectedCarLocation;
+
+	return Spline->FindLocationClosestToWorldLocation(FirstPoint, ESplineCoordinateSpace::Type::World);
+}
+
+double ACarAICPP::GetAngleBerweenCarAndRoad(FRotator ActorRotation, FVector SelectedCarLocation, FVector FoundDestinationActorPoint) {
+	auto FoundDirectionForActor = UKismetMathLibrary::FindLookAtRotation(SelectedCarLocation, FoundDestinationActorPoint);
+
+	return UKismetMathLibrary::NormalizedDeltaRotator(FoundDirectionForActor, ActorRotation).Yaw;
+}
+
+double ACarAICPP::GetWheelSteering(double DirectionAngle) {
+	return UKismetMathLibrary::MapRangeClamped(DirectionAngle, -30, 30, -1, 1) + RandomSterling;
+}
+
+void ACarAICPP::ApplyCarAxis(double Throttle, double Brake, double Steering) {
+	GetVehicleMovement()->SetThrottleInput(Throttle);
+	GetVehicleMovement()->SetBrakeInput(Brake);
+	GetVehicleMovement()->SetSteeringInput(Steering * 2.5);
+}
+
+double ACarAICPP::GetTurningRadius(double WheelStering) {
+	return  400./FMath::Tan(FMath::DegreesToRadians(WheelStering * 30.f));
+}
+
+FVector ACarAICPP::GetCarVector(FRotator ActorRotation) {
+	auto Vector = ActorRotation.Vector();
+	Vector.Normalize();
+
+	return  Vector;
+
+}FVector ACarAICPP::GetCarRightVector(FRotator ActorRotation) {
+	ActorRotation.Add(0, 90, 0);
+
+	auto Vector = ActorRotation.Vector();
+	Vector.Normalize();
+
+	return  Vector;
+}
+
+double ACarAICPP::GetAngleBetweenCarAndRightvectorSplineAndLength(FVector ActorLocation, FVector LocationOnSplineNearlyPlayer, FRotator ActorRotation, double& LengthToRigthPoint) {
+	FVector RightVectorOnSplineNearlyPlayer = Spline->FindRightVectorClosestToWorldLocation(ActorLocation, ESplineCoordinateSpace::Type::World);
+	auto Rot = RightVectorOnSplineNearlyPlayer.Rotation();
+	double Yaw = UKismetMathLibrary::NormalizedDeltaRotator(Rot, ActorRotation).Yaw;
+
+	RightVectorOnSplineNearlyPlayer += LocationOnSplineNearlyPlayer - ActorLocation;
+	RightVectorOnSplineNearlyPlayer.Z = 0;
+	LengthToRigthPoint = RightVectorOnSplineNearlyPlayer.Length();
+
+	return Yaw;
+}
+
+double ACarAICPP::GetLenFromTurningRadiusCenterToRoad(FVector CarVector, FVector CarRightVector, FVector ActorLocation, double TurningRadius) {
+	auto TurningRadiusCenterLocation = -2. * CarVector + CarRightVector * TurningRadius + ActorLocation;
+
+	auto SplineTangentNearlyRadius = Spline->FindLocationClosestToWorldLocation(TurningRadiusCenterLocation, ESplineCoordinateSpace::Type::World);
+
+	auto CenterTpRoadVector = TurningRadiusCenterLocation - SplineTangentNearlyRadius;
+	CenterTpRoadVector.Z = 0;
+
+	return CenterTpRoadVector.Length();
+}
+
+double ACarAICPP::GetLenFromSteeringCircleToRoadWigth(double LenFromTurningRadiusCenterToRoad, double TurningRadius, double AngleAngleBetweenCarAndRightBector,
+	double LengthToRigthPoint, double ActorToSplineNearlyPointLengthXY) {
+
+	bool ActorDirectionY = abs(AngleAngleBetweenCarAndRightBector) > 90;
+	bool ActorSide = LengthToRigthPoint > ActorToSplineNearlyPointLengthXY;
+
+	return abs(TurningRadius) * (ActorDirectionY ? -1. : 1.) * (ActorSide ? -1. : 1.) + LenFromTurningRadiusCenterToRoad;
+}
+
+bool ACarAICPP::CheckTheNeedForATurnBack(double DirectionAngle, double LenFromSteeringCircleToRoadWigth) {
+	return (abs(DirectionAngle) > 15) && (LenFromSteeringCircleToRoadWigth > 750);
+}
+
 void ACarAICPP::RespawnUpdate(FVector Pos, FRotator ActorRotation, float RotationOnZ, float Length, float DeltaTime)
 {
 	if (abs(ActorRotation.Roll) < 100 && abs(ActorRotation.Pitch) < 100)
@@ -161,13 +235,23 @@ void ACarAICPP::RespawnUpdate(FVector Pos, FRotator ActorRotation, float Rotatio
 		OverturmClock += DeltaTime;
 
 	if (Length < 2200 && OverturmClock < 5)
-		LastPos = FTransform(FRotator(0, RotationOnZ, 0), Pos, FVector(1, 1, 1));
+		LastPos = FTransform(FRotator(0, RotationOnZ, 0), Pos + FVector(0, 0, 50.), FVector(1, 1, 1));
 	else {
 		SetActorTransform(LastPos, false, nullptr, ETeleportType::TeleportPhysics);
 		GetMesh()->SetPhysicsAngularVelocityInDegrees(FVector(0, 0, 0));
 		GetMesh()->SetPhysicsLinearVelocity(FVector(0, 0, 0));
 	}
 
+}
+
+void ACarAICPP::ChangeBackLights(bool Enabled)
+{
+	if (Enabled == true) {
+		GetMesh()->SetMaterial(1, BackLightsOn);
+	}
+	else {
+		GetMesh()->SetMaterial(1, BackLightsOff);
+	}
 }
 
 void ACarAICPP::SetupCarSound()
@@ -197,9 +281,9 @@ void ACarAICPP::SetupCarSound()
 	else
 		Sp = a;
 	//-------------------------//
-	
+
 	if (CarSound == nullptr) {
-		GEngine->AddOnScreenDebugMessage(-1,15,FColor::White,TEXT("Problem"));
+		GEngine->AddOnScreenDebugMessage(-1, 15, FColor::White, TEXT("Problem"));
 		return;
 	}
 	CarSound->ResetParameters();
